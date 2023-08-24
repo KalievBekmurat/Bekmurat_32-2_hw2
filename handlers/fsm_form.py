@@ -1,71 +1,71 @@
 from aiogram.dispatcher import FSMContext
 from aiogram.types import ContentTypes
 
-
 from config import bot
 from aiogram import types, Dispatcher
 from aiogram.dispatcher.filters.state import State, StatesGroup
 from database.sql_commands import Database
+from keyboards.fsm_keyboard import select_my_profile_keyboard
 
 
-
-class Form_States(StatesGroup):
+class FormStates(StatesGroup):
     nickname = State()
     age = State()
     bio = State()
     married = State()
     photo = State()
 
-async def fsm_start(message: types.Message):
-    await message.reply('Отправьте свой никнейм:')
-    await Form_States.nickname.set()
+
+async def fsm_start(call: types.CallbackQuery):
+    await call.message.reply("Отправь мне свой новый никнейм")
+    await FormStates.nickname.set()
+
 
 async def load_nickname(message: types.Message,
                         state: FSMContext):
     async with state.proxy() as data:
         data['nickname'] = message.text
 
-
-    await Form_States.next()
-    await message.reply('Отправьте свой возраст (используя числа):')
+    await FormStates.next()
+    await message.reply("Отправь мне свой возраст, используй только числа")
 
 
 async def load_age(message: types.Message,
                    state: FSMContext):
     try:
         if type(int(message.text)) != int:
-            await message.reply('              🔴Ошибка🔴'
-                                'Отправьте свой возраст (ИСПОЛЬЗУЯ ЧИСЛА)'
-                                '      Запустите регистрацию заново')
+            await message.reply("Говорил же отправляй числа, "
+                                "пожлайста запустите регистрацию заново")
             await state.finish()
         else:
             async with state.proxy() as data:
                 data['age'] = message.text
-            await Form_States.next()
-            await message.reply('Отправьте свое место рождения:')
+            await FormStates.next()
+            await message.reply("Отправь мне свою биографию или хобби")
     except ValueError as e:
         await state.finish()
-        print(f'FSMAGE: {e}')
-        await message.reply('              🔴Ошибка🔴'
-                                'Отправьте свой возраст (ИСПОЛЬЗУЯ ЧИСЛА)'
-                                '      Запустите регистрацию заново')
+        print(f"FSMAGE: {e}")
+        await message.reply("Говорил же отправляй числа, "
+                            "пожлайста запустите регистрацию заново")
+
 
 async def load_bio(message: types.Message,
-                    state: FSMContext):
+                   state: FSMContext):
     async with state.proxy() as data:
         data['bio'] = message.text
 
-    await Form_States.next()
-    await message.reply("Отправьте свою биографию:")
+    await FormStates.next()
+    await message.reply("Вы женаты/замужем ? "
+                        "(если не хотите отвечать, отправьте знак минус пожалуйста)")
 
 
 async def load_married(message: types.Message,
-                   state: FSMContext):
+                       state: FSMContext):
     async with state.proxy() as data:
         data['married'] = message.text
 
-    await Form_States.next()
-    await message.reply("Отправьте свою фотографию: ")
+    await FormStates.next()
+    await message.reply("Отправь мне свое фото(не в разрешении файла)")
 
 
 async def load_photo(message: types.Message,
@@ -75,31 +75,50 @@ async def load_photo(message: types.Message,
         destination_dir="C:\Bekmurat_32-2_hw2\media"
     )
     async with state.proxy() as data:
-        with open(path.name, 'rb') as photo:
-            await bot.send_photo(
-                chat_id=message.chat.id,
-                photo=photo,
-                caption=f'Nickname: {data["nickname"]}\n'
-                        f'Age: {data["age"]}\n'
-                        f'bio: {data["bio"]}\n'
-                        f'married: {data["married"]}\n'
+
+        form_existed = Database().sql_select_user_form_by_telegram_id_command(
+            message.from_user.id)
+        if form_existed:
+            Database().sql_update_user_form_command(
+                nickname=data['nickname'],
+                age=data['age'],
+                bio=data['bio'],
+                married=data['married'],
+                photo=path.name,
+                telegram_id=message.from_user.id,
             )
+            await message.reply("Вы успешно обновили свою анкету\n"
+                                "Можете просмотреть свою анкету нажав на кнопку мой профиль",
+                                reply_markup=await select_my_profile_keyboard())
+        else:
+            Database().sql_insert_user_form_command(
+                telegram_id=message.from_user.id,
+                nickname=data['nickname'],
+                age=data['age'],
+                bio=data['bio'],
+                married=data['married'],
+                photo=path.name,
+            )
+            await message.reply("Вы успешно зарегистрировали свою анкету\n"
+                                "Можете просмотреть свою анкету нажав на кнопку мой профиль",
+                                reply_markup=await select_my_profile_keyboard())
+    await state.finish()
 
 
 def register_fsm_form_handlers(dp: Dispatcher):
-    dp.register_message_handler(fsm_start, commands=["signup"])
+    dp.register_callback_query_handler(fsm_start, lambda call: call.data == "signup")
     dp.register_message_handler(load_nickname,
-                                state=Form_States.nickname,
+                                state=FormStates.nickname,
                                 content_types=['text'])
     dp.register_message_handler(load_age,
-                                state=Form_States.age,
+                                state=FormStates.age,
                                 content_types=['text'])
     dp.register_message_handler(load_bio,
-                                state=Form_States.bio,
+                                state=FormStates.bio,
                                 content_types=['text'])
     dp.register_message_handler(load_married,
-                                state=Form_States.married,
+                                state=FormStates.married,
                                 content_types=['text'])
     dp.register_message_handler(load_photo,
-                                state=Form_States.photo,
+                                state=FormStates.photo,
                                 content_types=ContentTypes.PHOTO)
