@@ -14,6 +14,8 @@ class Database:
         self.connection.execute(sql_queries.CREATE_USER_TABLE_QUERY)
         self.connection.execute(sql_queries.CREATE_USER_FORM_TABLE_QUERY)
         self.connection.execute(sql_queries.CREATE_LIKE_FORM_TABLE_QUERY)
+        self.connection.execute(sql_queries.CREATE_FILMS_TABLE_QUERY)
+        self.connection.execute(sql_queries.CREATE_FAVOURITE_FILMS_TABLE_QUERY)
         self.connection.execute(sql_queries.CREATE_REFERENCE_USERS_TABLE_QUERY)
         self.connection.commit()
 
@@ -25,6 +27,7 @@ class Database:
                              username,
                              first_name,
                              last_name,
+                             None
                              )
                             )
         self.connection.commit()
@@ -164,5 +167,50 @@ class Database:
         }
         return self.cursor.execute(
             sql_queries.SELECT_ALL_REFERENCE_QUERY,
+            (owner_telegram_id,)
+        ).fetchall()
+
+    def sql_insert_films_command(self, link):
+        self.cursor.execute(sql_queries.INSERT_FILMS_QUERY,
+                            (None,
+                             link,
+                             )
+                            )
+        self.connection.commit()
+
+    def sql_select_specific_films_command(self, link):
+        self.cursor.row_factory = lambda cursor, row: {
+            "id": row[0],
+            "link": row[1],
+        }
+        return self.cursor.execute(
+            sql_queries.SELECT_SPECIFIC_FILMS_QUERY,
+            (link,)
+        ).fetchall()
+
+    def sql_select_specific_films_for_favourite_command(self, films_id):
+        self.cursor.row_factory = lambda cursor, row: {
+            "link": row[0],
+        }
+        return self.cursor.execute(
+            sql_queries.SELECT_SPECIFIC_FILMS_FOR_FAVOURITE_QUERY,
+            (films_id,)
+        ).fetchall()
+
+    def sql_insert_favourite_films_command(self, owner_telegram_id, link):
+        self.cursor.execute(sql_queries.INSERT_FAVOURITE_FILMS_QUERY,
+                            (None,
+                             owner_telegram_id,
+                             link,
+                             )
+                            )
+        self.connection.commit()
+
+    def sql_select_owner_films_command(self, owner_telegram_id):
+        self.cursor.row_factory = lambda cursor, row: {
+            "link": row[0],
+        }
+        return self.cursor.execute(
+            sql_queries.SELECT_OWNER_FILMS_QUERY,
             (owner_telegram_id,)
         ).fetchall()

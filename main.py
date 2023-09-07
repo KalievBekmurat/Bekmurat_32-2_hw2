@@ -15,7 +15,7 @@ async def onstart_up(_):
     db.sql_create_db()
 
 
-start.register_start_handlers(dp)
+start.register_start_handler(dp)
 callback.register_callback_handlers(dp)
 reference.register_reference_handlers(dp)
 fsm_form.register_fsm_form_handlers(dp)
@@ -25,3 +25,5 @@ if __name__ == "__main__":
     executor.start_polling(dp,
                            skip_updates=True,
                            on_startup=onstart_up)
+
+

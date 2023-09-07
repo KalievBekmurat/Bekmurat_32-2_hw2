@@ -34,7 +34,7 @@ async def admin_select_users_keyboard():
 
 async def new_start_keyboard():
     markup = InlineKeyboardMarkup()
-    random_profiles_button = InlineKeyboardButton(
+    random_profiles_button: InlineKeyboardButton = InlineKeyboardButton(
         "Просмотр анкет 🎉",
         callback_data="random_profiles"
     )
@@ -46,12 +46,19 @@ async def new_start_keyboard():
         "Реферальная программа",
         callback_data="reference_menu"
     )
+    parser_button = InlineKeyboardButton(
+        "Найти фильмы",
+        callback_data='films_parsing'
+    )
+
     markup.add(
         random_profiles_button
     ).add(
         my_profile_button
     ).add(
         referral_button
+    ).add(
+        parser_button
     )
     return markup
 
@@ -90,6 +97,7 @@ async def my_profile_detail_keyboard():
     return markup
 
 
+
 async def if_not_profile_keyboard():
     markup = InlineKeyboardMarkup()
     signup_button = InlineKeyboardButton(
@@ -98,5 +106,17 @@ async def if_not_profile_keyboard():
     )
     markup.row(
         signup_button,
+    )
+    return markup
+
+
+async def save_films_keyboard(films_id):
+    markup = InlineKeyboardMarkup()
+    save_button = InlineKeyboardButton(
+        "Сохранить 💾",
+        callback_data=f"save_films_{films_id}"
+    )
+    markup.add(
+        save_button,
     )
     return markup

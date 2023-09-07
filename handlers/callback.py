@@ -1,12 +1,14 @@
 import random
 import re
 
+from scraping.Films_Scraper import FilmsScraper
+
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from config import bot
 from aiogram import types, Dispatcher
 
 from database.sql_commands import Database
-from keyboards.start_kb import like_dislike_keyboard, my_profile_detail_keyboard, if_not_profile_keyboard
+from keyboards.start_kb import like_dislike_keyboard, my_profile_detail_keyboard, if_not_profile_keyboard, save_films_keyboard
 
 
 async def admin_user_call(call: types.CallbackQuery):
@@ -124,6 +126,47 @@ async def delete_profile_call(call: types.CallbackQuery):
     )
 
 
+
+async def films_parsing_call(call: types.CallbackQuery):
+    scraper = FilmsScraper()
+    data = scraper.parse_data()
+    for url in data:
+        Database().sql_insert_films_command(link=url)
+        films_id = Database().sql_select_specific_films_command(link=url)
+        print(films_id[0]['id'])
+        await bot.send_message(
+            chat_id=call.message.chat.id,
+            text=url,
+            reply_markup=await save_films_keyboard(films_id=films_id[0]['id'])
+        )
+
+
+async def save_films_call(call: types.CallbackQuery):
+    films_id = re.sub("save_films_", "", call.data)
+    link = Database().sql_select_specific_films_for_favourite_command(
+        films_id=films_id
+    )
+    print(link[0]["link"])
+    Database().sql_insert_favourite_films_command(
+        owner_telegram_id=call.from_user.id,
+        link=link[0]["link"]
+    )
+    await bot.send_message(
+        chat_id=call.message.chat.id,
+        text="Вы сохранили фильм"
+    )
+
+
+async def my_films_call(call: types.CallbackQuery):
+    links = Database().sql_select_owner_films_command(
+        owner_telegram_id=call.from_user.id
+    )
+    for link in links:
+        await bot.send_message(
+            chat_id=call.message.chat.id,
+            text=link['link']
+        )
+
 def register_callback_handlers(dp: Dispatcher):
 
     dp.register_callback_query_handler(admin_user_call, lambda call: call.data == "admin_user_list")
@@ -131,3 +174,6 @@ def register_callback_handlers(dp: Dispatcher):
     dp.register_callback_query_handler(random_profiles_call, lambda call: call.data == "random_profiles")
     dp.register_callback_query_handler(like_call, lambda call: "like_button_" in call.data)
     dp.register_callback_query_handler(delete_profile_call, lambda call: call.data == "delete_profile")
+    dp.register_callback_query_handler(films_parsing_call, lambda call: call.data == "films_parsing")
+    dp.register_callback_query_handler(save_films_call, lambda call: "save_films_" in call.data)
+    dp.register_callback_query_handler(my_films_call, lambda call: call.data == "my_films_call_data")
