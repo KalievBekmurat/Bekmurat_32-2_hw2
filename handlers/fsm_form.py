@@ -72,7 +72,7 @@ async def load_photo(message: types.Message,
                      state: FSMContext):
     print(message.photo)
     path = await message.photo[-1].download(
-        destination_dir="C:\Bekmurat_32-2_hw2\media"
+        destination_dir="/home/KalievBekmurat\Bekmurat_32-2_hw2\media"
     )
     async with state.proxy() as data:
 
